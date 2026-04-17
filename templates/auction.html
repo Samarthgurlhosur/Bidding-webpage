@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Auction - Bidding System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+        // Manual refresh function
+        function manualRefresh() {
+            location.reload();
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏆 Live Auction</h1>
+            <nav>
+                <a href="/" class="nav-link">Dashboard</a>
+                <a href="/add_team" class="nav-link">Add Team</a>
+                <a href="/add_item" class="nav-link">Add Item</a>
+                <a href="/auction" class="nav-link active">Auction</a>
+            </nav>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if current_item %}
+                <section class="section auction-section">
+                    <!-- Current Item Display -->
+                    <div class="item-display">
+                        <div class="item-header">
+                            <h2>🔨 Current Item Up for Auction</h2>
+                            <span class="item-count">{{ available_items }} items remaining</span>
+                        </div>
+
+                        <div class="item-card-large">
+                            <div class="item-info">
+                                <h3>{{ current_item.name }}</h3>
+                                <p class="item-type"><strong>Type:</strong> <span class="badge badge-{{ current_item.item_type }}">{{ current_item.item_type }}</span></p>
+                                <p class="base-price"><strong>Base Price:</strong> {{ current_item.base_price }} points</p>
+                                <p class="item-id"><strong>Item ID:</strong> {{ current_item.id }}</p>
+                            </div>
+
+                            <!-- Highest Bid Display -->
+                            {% if highest_bid %}
+                                <div class="bid-status winning">
+                                    <h4>🏅 Current Highest Bid</h4>
+                                    <p class="bid-amount">{{ highest_bid.bid_amount }} points</p>
+                                    <p class="bid-team">by <strong>{{ highest_bidder.name }}</strong></p>
+                                </div>
+                            {% else %}
+                                <div class="bid-status no-bid">
+                                    <h4>⏳ No Bids Yet</h4>
+                                    <p>Be the first to bid!</p>
+                                    <p class="min-bid">Minimum bid: {{ current_item.base_price }} points</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Bid Form -->
+                    <div class="bid-form-section">
+                        <h3>💰 Place Your Bid</h3>
+                        {% if current_item.is_auctioned %}
+                            <form method="POST" action="/place_bid" class="form">
+                                <input type="hidden" name="item_id" value="{{ current_item.id }}">
+                                
+                                <div class="form-group">
+                                    <label for="team_id">Select Your Team:</label>
+                                    <select id="team_id" name="team_id" required>
+                                        <option value="">-- Choose Your Team --</option>
+                                        {% for team in teams %}
+                                            <option value="{{ team.id }}" data-points="{{ team.points }}">
+                                                {{ team.name }} ({{ team.points }} points available)
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="bid_amount">Bid Amount:</label>
+                                    <input type="number" id="bid_amount" name="bid_amount" 
+                                           min="{{ highest_bid.bid_amount + 1 if highest_bid else current_item.base_price }}" 
+                                           placeholder="Enter bid amount" required>
+                                    <small>
+                                        Minimum: {{ highest_bid.bid_amount + 1 if highest_bid else current_item.base_price }} points {% if highest_bid %}(higher than current highest bid){% else %}(base price){% endif %}
+                                    </small>
+                                </div>
+
+                                <button type="submit" class="btn btn-success btn-large">Place Bid</button>
+                            </form>
+                        {% else %}
+                            <p class="info-msg">Auction for this item hasn't started yet.</p>
+                            <form method="POST" action="/start_next_auction" style="display:inline;">
+                                <button type="submit" class="btn btn-primary">Start Auction</button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- Upcoming Items -->
+                    {% if upcoming_items %}
+                        <div class="upcoming-items-section">
+                            <h3>🟡 Upcoming Items</h3>
+                            <div class="table-responsive">
+                                <table class="items-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Base Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in upcoming_items %}
+                                            <tr>
+                                                <td>{{ item.name }}</td>
+                                                <td><span class="badge badge-{{ item.item_type }}">{{ item.item_type }}</span></td>
+                                                <td>{{ item.base_price }} points</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Bid History -->
+                    {% if bids %}
+                        <div class="bid-history-section">
+                            <h3>📊 All Bids</h3>
+                            <div class="table-responsive">
+                                <table class="bids-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Team</th>
+                                            <th>Bid Amount</th>
+                                            <th>Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bid in bids %}
+                                            <tr {% if loop.first %}class="top-bid"{% endif %}>
+                                                <td>
+                                                    {% if loop.first %}
+                                                        <span class="medal">🥇</span>
+                                                    {% elif loop.index == 2 %}
+                                                        <span class="medal">🥈</span>
+                                                    {% elif loop.index == 3 %}
+                                                        <span class="medal">🥉</span>
+                                                    {% else %}
+                                                        #{{ loop.index }}
+                                                    {% endif %}
+                                                </td>
+                                                <td><strong>{{ bid.team.name }}</strong></td>
+                                                <td>{{ bid.bid_amount }} points</td>
+                                                <td>{{ bid.timestamp.strftime('%H:%M:%S') }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {% if current_item.is_auctioned %}
+                                <div class="auction-actions">
+                                    <form method="POST" action="/end_auction/{{ current_item.id }}" style="display:inline;">
+                                        <button type="submit" class="btn btn-warning">End Auction & Award Item</button>
+                                    </form>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </section>
+            {% else %}
+                <section class="section">
+                    <div class="empty-state">
+                        <h2>✨ All Auctions Complete!</h2>
+                        <p>There are no more items to auction.</p>
+                        <a href="/add_item" class="btn btn-primary">Add More Items</a>
+                        <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+                    </div>
+                </section>
+            {% endif %}
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Bidding System. All rights reserved. | 
+                <button onclick="manualRefresh()" class="btn btn-small">🔄 Refresh</button></p>
+        </footer>
+    </div>
+</body>
+</html>

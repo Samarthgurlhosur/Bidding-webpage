@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bidding System - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏆 Bidding System Dashboard</h1>
+            <nav>
+                <a href="/" class="nav-link active">Dashboard</a>
+                <a href="/add_team" class="nav-link">Add Team</a>
+                <a href="/add_item" class="nav-link">Add Item</a>
+                <a href="/auction" class="nav-link">Auction</a>
+            </nav>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="action-row">
+                <form method="POST" action="/reset" onsubmit="return confirm('This will delete all teams, items, bids and start fresh. Continue?');">
+                    <button type="submit" class="btn btn-danger">Reset All Data</button>
+                </form>
+            </div>
+
+            <!-- Teams Section -->
+            <section class="section">
+                <h2>📋 Teams</h2>
+                {% if teams %}
+                    <div class="cards-grid">
+                        {% for team in teams %}
+                            <div class="card team-card">
+                                <h3>{{ team.name }}</h3>
+                                <p class="points">Points: <strong>{{ team.points }}</strong></p>
+                                <p class="items-won">Items Won: <strong>{{ team.items_won|length }}</strong></p>
+                                {% if team.items_won %}
+                                    <div class="items-list">
+                                        <h4>Items Owned:</h4>
+                                        <ul>
+                                            {% for item in team.items_won %}
+                                                <li>{{ item.name }} ({{ item.item_type }}) - {{ item.final_price }} points</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="empty-msg">No teams added yet. <a href="/add_team">Add a team</a></p>
+                {% endif %}
+            </section>
+
+            <!-- Items Section -->
+            <section class="section">
+                <h2>🛠️ Available Items</h2>
+                {% if available_items %}
+                    <div class="table-responsive">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Base Price</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in available_items %}
+                                    <tr>
+                                        <td>{{ item.name }}</td>
+                                        <td><span class="badge badge-{{ item.item_type }}">{{ item.item_type }}</span></td>
+                                        <td>{{ item.base_price }} points</td>
+                                        <td><span class="badge badge-available">Available</span></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-msg">No items available for auction. <a href="/add_item">Add an item</a></p>
+                {% endif %}
+            </section>
+
+            <!-- Auctioned Items Section -->
+            <section class="section">
+                <h2>🔨 Auction History</h2>
+                {% if auctioned_items %}
+                    <div class="table-responsive">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Base Price</th>
+                                    <th>Final Price</th>
+                                    <th>Won By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in auctioned_items %}
+                                    <tr>
+                                        <td>{{ item.name }}</td>
+                                        <td><span class="badge badge-{{ item.item_type }}">{{ item.item_type }}</span></td>
+                                        <td>{{ item.base_price }} points</td>
+                                        <td><strong>{{ item.final_price or 'N/A' }}</strong></td>
+                                        <td>{{ item.owner.name if item.owner else 'Unsold' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="empty-msg">No auctions completed yet.</p>
+                {% endif %}
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Bidding System. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
